@@ -31,3 +31,38 @@ jobs:
       - name: Build Docker images
         run: |
           docker build -t task-manager:${{ github.sha }} .
+  integration:
+    runs-on: ubuntu-latest
+    needs: docker-build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: start Docker Compose
+        run: |
+          docker-compose up -d --build
+
+      - name: Show container status
+        run: |
+          docker compose ps
+      - name: wait for API
+        run: |
+          for i in {1..30}; do
+              if curl -s http://localhost:8000/health; then
+                echo "API is ready"
+              exit 0
+              fi
+              sleep 2
+      - name: Test API
+        run: |
+          curl -s http://localhost:8000/health
+          curl -s http://localhost:8000/api/v1/tasks
+      - name: show logs
+        if: always()
+        run: |
+          docker-compose logs
+      - name: stop Docker Compose
+        if: always()
+        run: |
+          docker-compose down -v

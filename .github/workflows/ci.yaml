@@ -41,8 +41,8 @@ jobs:
 
       - name: start Docker Compose
         run: |
-          docker-compose up -d --build
-
+          docker compose up -d --build
+          
       - name: Show container status
         run: |
           docker compose ps

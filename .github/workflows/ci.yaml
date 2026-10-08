@@ -22,3 +22,12 @@ jobs:
       - name: Run tests
         run: |
           pytest -v
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Build Docker images
+        run: |
+          docker build -t task-manager:${{ github.sha }} .

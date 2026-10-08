@@ -54,6 +54,7 @@ jobs:
               exit 0
               fi
               sleep 2
+          done
       - name: Test API
         run: |
           curl -s http://localhost:8000/health

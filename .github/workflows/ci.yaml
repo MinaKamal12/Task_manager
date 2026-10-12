@@ -112,11 +112,10 @@ jobs:
         uses: actions/checkout@v6
       - name: pull latest production image
         run: |
-          docker compose -f docker-compose.prod.yml pull api
-
+          docker compose --env-file /home/mina/Desktop/TaskManager/.env -f /home/mina/Desktop/TaskManager/docker-compose.prod.yml pull api
       - name: deploy application
         run: |
-          docker compose -f docker-compose.prod.yml up -d --no-deps api
+          docker compose --env-file /home/mina/Desktop/TaskManager/.env -f /home/mina/Desktop/TaskManager/docker-compose.prod.yml up -d --no-deps api
       - name: verify deployment
         run: |
           for i in {1..30}; do

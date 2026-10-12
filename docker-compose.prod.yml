@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:16
-    container_name: task-manager-db
+    # container_name: task-manager-db
     environment:
       POSTGRES_DB: task_manager
       POSTGRES_USER: postgres
@@ -16,7 +16,7 @@ services:
 
   api:
     image: ghcr.io/minakamal12/task-manager:latest
-    container_name: task-manager-api
+    # container_name: task-manager-api
     restart: unless-stopped
     ports:
       - "127.0.0.1:8000:8000"

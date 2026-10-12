@@ -107,24 +107,77 @@ jobs:
     runs-on: self-hosted
     needs: publish
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    env:
+      COMPOSE_FILE: /home/mina/Desktop/TaskManager/docker-compose.prod.yml
+      ENV_FILE: /home/mina/Desktop/TaskManager/.env
+      IMAGE: ghcr.io/minakamal12/task-manager
+      NEW_TAG: ${{ github.sha }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-      - name: pull latest production image
+
+      - name: Record current image
+        id: previous
         run: |
-          docker compose --env-file /home/mina/Desktop/TaskManager/.env -f /home/mina/Desktop/TaskManager/docker-compose.prod.yml pull api
-      - name: deploy application
+          CONTAINER_ID=$(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -q api)
+
+          if [ -z "$CONTAINER_ID" ]; then
+            echo "No existing API container found."
+            exit 1
+          fi
+
+          PREVIOUS_ID=$(docker inspect "$CONTAINER_ID" --format '{{.Image}}')
+          echo "previous_id=$PREVIOUS_ID" >> "$GITHUB_OUTPUT"
+          echo "Previously running image ID: $PREVIOUS_ID"
+
+      - name: Pull new image
         run: |
-          docker compose --env-file /home/mina/Desktop/TaskManager/.env -f /home/mina/Desktop/TaskManager/docker-compose.prod.yml up -d --no-deps api
-      - name: verify deployment
+          docker pull "$IMAGE:$NEW_TAG"
+
+      - name: Deploy new image
+        run: |
+          export TASK_MANAGER_IMAGE="$IMAGE:$NEW_TAG"
+          docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" \
+            up -d --no-deps api
+
+      - name: Verify deployment
+        id: health
+        continue-on-error: true
         run: |
           for i in {1..30}; do
-              if curl -fsS http://localhost:8000/health; then
-                echo "API is ready"
+            if curl -fsS http://127.0.0.1:8000/health; then
+              echo "Deployment successful"
               exit 0
-              fi
-              sleep 2
+            fi
+            sleep 2
           done
-          echo "deployment health check failed"
-          docker compose -f docker-compose.prod.yml logs api
+          echo "Deployment health check failed"
+          exit 1
+
+      - name: Roll back if health check fails
+        if: steps.health.outcome == 'failure'
+        env:
+          PREVIOUS_ID: ${{ steps.previous.outputs.previous_id }}
+        run: |
+          if [ -z "$PREVIOUS_ID" ]; then
+            echo "No previous image was recorded; automatic rollback is unavailable."
+            exit 1
+          fi
+
+          export TASK_MANAGER_IMAGE="$PREVIOUS_ID"
+          docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" \
+            up -d --no-deps api
+
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8000/health; then
+              echo "Rollback successful"
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Rollback failed; inspect the API container logs."
+          docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs api
           exit 1

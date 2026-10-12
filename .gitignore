@@ -11,3 +11,4 @@ venv/
 *.sqlite
 task-manager.zip
 task-manager.zip
+actions-runner/

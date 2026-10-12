@@ -103,3 +103,29 @@ jobs:
           tags: |
             ghcr.io/${{ steps.image.outputs.owner }}/task-manager:${{ github.sha }}
             ghcr.io/${{ steps.image.outputs.owner }}/task-manager:latest
+  deploy:
+    runs-on: self-hosted
+    needs: publish
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: pull latest production image
+        run: |
+          docker compose -f docker-compose.prod.yml pull api
+
+      - name: deploy application
+        run: |
+          docker compose -f docker-compose.prod.yml up -d --no-deps api
+      - name: verify deployment
+        run: |
+          for i in {1..30}; do
+              if curl -fsS http://localhost:8000/health; then
+                echo "API is ready"
+              exit 0
+              fi
+              sleep 2
+          done
+          echo "deployment health check failed"
+          docker compose -f docker-compose.prod.yml logs api
+          exit 1

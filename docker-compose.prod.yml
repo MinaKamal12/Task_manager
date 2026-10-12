@@ -22,7 +22,7 @@ services:
       - "127.0.0.1:8000:8000"
 
     environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/task_manager
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/task_manager
     depends_on:
       db:
         condition: service_healthy
